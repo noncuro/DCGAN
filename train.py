@@ -13,12 +13,10 @@ from torchvision.utils import save_image
 from img_helpers import *
 from model import *
 
-data_dir = './datasets'
 
 REAL_LABEL = 1
 FAKE_LABEL = 0
 
-batch_size = 256
 NUM_TRAIN = 49000
 
 num_epochs = 100
@@ -40,37 +38,7 @@ if torch.cuda.is_available():
     torch.backends.cudnn.deterministic = True
 torch.manual_seed(0)
 
-transform = transforms.Compose([
-    transforms.ToTensor(),
-    transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
-])
 
-cifar10_train = datasets.CIFAR10(data_dir, train=True, download=True,
-                                 transform=transform)
-cifar10_val = datasets.CIFAR10(data_dir, train=True, download=True,
-                               transform=transform)
-cifar10_test = datasets.CIFAR10(data_dir, train=False, download=True,
-                                transform=transform)
-
-
-def create_collate_fn(real_batch_size: int,
-                      fake_batch_size: Optional[int] = None,
-                      *, latent_vector_size: int, device):
-    assert real_batch_size >= 1
-    if not fake_batch_size:
-        fake_batch_size = real_batch_size
-
-    _real_label = torch.full((real_batch_size,), float(REAL_LABEL), device=device)
-    _fake_label = torch.full((fake_batch_size,), float(FAKE_LABEL), device=device)
-
-    def collate_fn(x):
-        # Ignore the labels
-        real_examples, _ = default_collate(x)
-
-        noise = torch.randn(fake_batch_size, latent_vector_size, 1, 1, device=device)
-        return (real_examples, _real_label), (noise, _fake_label)
-
-    return collate_fn
 
 
 def get_loader_train(batch_size):

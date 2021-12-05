@@ -1,5 +1,6 @@
 __all__ = ['Generator', 'Discriminator', 'weights_init']
 
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -39,10 +40,11 @@ def TransposeBlock(**kwargs):
 
 
 class Generator(nn.Module):
-    def __init__(self, latent_vector_size):
+    def __init__(self, latent_dim):
         super(Generator, self).__init__()
+        self.latent_dim = latent_dim
         self.layers = nn.Sequential(
-            nn.ConvTranspose2d(latent_vector_size, 512, kernel_size=4),
+            nn.ConvTranspose2d(latent_dim, 512, kernel_size=4),
             nn.BatchNorm2d(512),
             nn.LeakyReLU(),
             ResidualBlock(512, 512),
@@ -63,7 +65,8 @@ class Generator(nn.Module):
         x = self.layers(z)
         return x
 
-    def forward(self, z):
+    def forward(self, z: torch.Tensor):
+        z = z.view(-1, self.latent_dim, 1, 1)
         return self.decode(z)
 
 
@@ -85,7 +88,7 @@ class Discriminator(nn.Module):
 
     def forward(self, x):
         out = self.discriminator(x)
-        return out.view(-1, 1).squeeze(1)
+        return out.view(-1, 1)
 
 
 def weights_init(m):
