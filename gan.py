@@ -38,7 +38,7 @@ class GAN(LightningModule):
         # Fixed noise
         self.validation_z = torch.randn(8, self.hparams.latent_dim)
 
-        self.adversarial_loss = nn.BCELoss()
+        self.adversarial_loss = nn.BCEWithLogitsLoss()
 
         # For pt lightning
         self.example_input_array = torch.zeros(2, self.hparams.latent_dim)
@@ -56,7 +56,8 @@ class GAN(LightningModule):
         # train generator
         if optimizer_idx == 0:
             # generate images
-            self.generated_imgs = self(z)
+            generated_imgs = self(z)
+            self.generated_imgs = generated_imgs.detach()
 
             # ground truth result (ie: all fake)
             # put on GPU because we created this tensor inside training_loop
@@ -68,7 +69,9 @@ class GAN(LightningModule):
             g_loss = self.adversarial_loss(disc_pred_on_fake, valid)
             disc_pred_on_fake = disc_pred_on_fake.detach().mean().item()
             tqdm_dict = {"g_loss": g_loss.item(), "disc_pred_on_fake": disc_pred_on_fake}
-            wandb.log(tqdm_dict, step=self.global_step)
+            self.log("g_loss", g_loss.item())
+            self.log("disc_pred_on_fake", disc_pred_on_fake)
+            # self.logger.log_metrics(tqdm_dict, step=self.global_step)
             output = OrderedDict({"loss": g_loss, "progress_bar": tqdm_dict, "log": tqdm_dict})
             return output
 
@@ -88,13 +91,13 @@ class GAN(LightningModule):
             # how well can it label as fake?
             fake_label = torch.zeros(imgs.size(0), 1)
             fake_label = fake_label.type_as(imgs)
-
-            fake_loss = self.adversarial_loss(self.discriminator(self(z).detach()), fake_label)
+            # Reuse images last generated
+            fake_loss = self.adversarial_loss(self.discriminator(self.generated_imgs), fake_label)
 
             # discriminator loss is the average of these
             d_loss = (real_loss + fake_loss) / 2
             tqdm_dict = {"d_loss": d_loss.item(), "disc_pred_on_real": disc_pred_on_real}
-            wandb.log(tqdm_dict, step=self.global_step)
+            self.log_dict(tqdm_dict)
             output = OrderedDict({"loss": d_loss, "progress_bar": tqdm_dict, "log": tqdm_dict})
             return output
 
@@ -108,9 +111,7 @@ class GAN(LightningModule):
         return [opt_g, opt_d], []
 
     def on_epoch_end(self) -> None:
-        z = self.validation_z.type_as(self.generator.model[0].weight)
-
-        # log sampled images
-        sample_imgs = self(z)
-        grid = torchvision.utils.make_grid(sample_imgs)
-        wandb.log({"sample_imgs": wandb.Image(grid)}, step=self.global_step)
+        if self.trainer.is_global_zero:
+            grid = torchvision.utils.make_grid(self.generated_imgs)
+            # self.log("sample_imgs", wandb.Image(grid))
+            wandb.log({"sample_imgs": wandb.Image(grid), "trainer/global_step": self.trainer.global_step})

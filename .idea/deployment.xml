@@ -1,8 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" autoUpload="Always" serverName="ixnode-6d3fcffb-98a7-4904-9dac-0d26433b62a3@futuristic-cicada-320:22 agent" remoteFilesAllowedToDisappearOnAutoupload="false">
+  <component name="PublishConfigData" autoUpload="Always" serverName="ixnode-d639154d-509f-4323-ba97-ca6d69f417df@ingenious-elk-198:22 agent" remoteFilesAllowedToDisappearOnAutoupload="false">
     <serverData>
       <paths name="ixnode-6d3fcffb-98a7-4904-9dac-0d26433b62a3@futuristic-cicada-320:22 agent">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/jovyan/tmp" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="ixnode-d639154d-509f-4323-ba97-ca6d69f417df@ingenious-elk-198:22 agent">
         <serverdata>
           <mappings>
             <mapping deploy="/home/jovyan/tmp" local="$PROJECT_DIR$" />

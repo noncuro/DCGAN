@@ -80,7 +80,9 @@ class Discriminator(nn.Module):
             ResidualBlock(256, 512, stride=2),
             ResidualBlock(512, 64, stride=2),
             nn.Conv2d(64, 1, kernel_size=2),
-            nn.Sigmoid())
+            # NO SIGMOID - make sure loss function is appropriate
+            # nn.Sigmoid()
+        )
 
     def discriminator(self, x):
         out = self.layers(x)
