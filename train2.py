@@ -5,10 +5,10 @@ from pytorch_lightning.loggers import WandbLogger
 from data import CIFARDataModule
 from gan import GAN
 
-wandb_logger = WandbLogger(project="CIFAR_GAN")
+wandb_logger = WandbLogger(project="CIFAR_GAN", offline=False)
 
 LATENT_DIM = 128
-BATCH_SIZE = 64
+BATCH_SIZE = 32
 
 AVAIL_GPUS = torch.cuda.device_count()
 
@@ -22,6 +22,6 @@ if __name__ == "__main__":
                       gpus=-1,
                       accelerator="ddp",
                       precision=16,
-                      gradient_clip_val=1
+                      # gradient_clip_val=1
                       )
     trainer.fit(model, dm)

@@ -6,7 +6,7 @@ import torch.nn.functional as F
 
 
 class ResidualBlock(nn.Module):
-    def __init__(self, inchannel, outchannel, stride=1, groups=1, block=nn.Conv2d, relu_alpha=0.1, **kwargs):
+    def __init__(self, inchannel, outchannel, stride=1, groups=1, block=nn.Conv2d, relu_alpha=0.01, **kwargs):
         super(ResidualBlock, self).__init__()
         self.relu_alpha = relu_alpha
         self.left = nn.Sequential(
@@ -43,26 +43,34 @@ class Generator(nn.Module):
     def __init__(self, latent_dim):
         super(Generator, self).__init__()
         self.latent_dim = latent_dim
-        self.layers = nn.Sequential(
-            nn.ConvTranspose2d(latent_dim, 512, kernel_size=4),
+        _leaky_alpha = 0.01
+        self.initial_layers = nn.Sequential(
+            nn.ConvTranspose2d(latent_dim, 512, kernel_size=4, bias=False),
             nn.BatchNorm2d(512),
-            nn.LeakyReLU(),
-            ResidualBlock(512, 512),
-            nn.ConvTranspose2d(512, 256, kernel_size=3, stride=2, padding=0),
+            nn.LeakyReLU(_leaky_alpha),
+        )
+        self.layers = nn.Sequential(
+            ResidualBlock(512, 512, relu_alpha=_leaky_alpha),
+            ResidualBlock(512, 512, relu_alpha=_leaky_alpha),
+            nn.ConvTranspose2d(512, 256, kernel_size=4, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(256),
-            nn.LeakyReLU(),
-            ResidualBlock(256, 256),
-            nn.ConvTranspose2d(256, 128, kernel_size=3, stride=2, padding=1),
+            nn.LeakyReLU(_leaky_alpha),
+            ResidualBlock(256, 256, relu_alpha=_leaky_alpha),
+            ResidualBlock(256, 256, relu_alpha=_leaky_alpha),
+            nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(128),
-            nn.LeakyReLU(),
-            ResidualBlock(128, 128),
-            nn.ConvTranspose2d(128, 128, kernel_size=3, stride=2, padding=2, output_padding=1),
-            ResidualBlock(128, 128),
-            ResidualBlock(128, 3),
+            nn.LeakyReLU(_leaky_alpha),
+            ResidualBlock(128, 128, relu_alpha=_leaky_alpha),
+            ResidualBlock(128, 128, relu_alpha=_leaky_alpha),
+            nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1, bias=False),
+            ResidualBlock(64, 64, relu_alpha=_leaky_alpha),
+            ResidualBlock(64, 64, relu_alpha=_leaky_alpha),
+            ResidualBlock(64, 3, relu_alpha=_leaky_alpha),
             nn.Tanh())
 
-    def decode(self, z):
-        x = self.layers(z)
+    def decode(self, x):
+        x = self.initial_layers(x)
+        x = self.layers(x)
         return x
 
     def forward(self, z: torch.Tensor):
@@ -75,11 +83,13 @@ class Discriminator(nn.Module):
         super(Discriminator, self).__init__()
 
         self.layers = nn.Sequential(
-            ResidualBlock(3, 128, stride=2),
+            ResidualBlock(3, 32, stride=1),
+            ResidualBlock(32, 128, stride=2),
             ResidualBlock(128, 256, stride=2),
             ResidualBlock(256, 512, stride=2),
-            ResidualBlock(512, 64, stride=2),
-            nn.Conv2d(64, 1, kernel_size=2),
+            ResidualBlock(512, 128, stride=2),
+            ResidualBlock(128, 128),
+            nn.Conv2d(128, 1, kernel_size=2),
             # NO SIGMOID - make sure loss function is appropriate
             # nn.Sigmoid()
         )

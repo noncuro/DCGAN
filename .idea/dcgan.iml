@@ -2,7 +2,7 @@
 <module type="PYTHON_MODULE" version="4">
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$" />
-    <orderEntry type="jdk" jdkName="Remote Python 3.8.8 (sftp://ixnode-d639154d-509f-4323-ba97-ca6d69f417df@ingenious-elk-198:22/home/jovyan/conda/bin/python)" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="Python 3.8 (grid)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
 </module>

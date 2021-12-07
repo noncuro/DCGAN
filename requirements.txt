@@ -3,3 +3,4 @@ torchvision
 numpy
 wandb
 matplotlib
+pytorch_lightning
