@@ -25,6 +25,8 @@ class GAN(LightningModule):
             b1: float = 0.5,
             b2: float = 0.999,
             use_weights_init: bool = True,
+            clip_value: float = 0.01,
+            n_critic: int = 5,
             *,
             batch_size: int,
             **kwargs
@@ -45,17 +47,23 @@ class GAN(LightningModule):
 
         self.adversarial_loss = nn.BCEWithLogitsLoss()
 
+        self.disc_changed = False
+
     def forward(self, z):
         return self.generator(z)
 
     def training_step(self, batch, batch_idx, optimizer_idx):
         imgs, _ = batch
 
+        # sample noise
+        z = torch.randn(imgs.shape[0], self.hparams.latent_dim)
+        z = z.type_as(imgs)
+
         # train generator
         if optimizer_idx == 0:
-            # sample noise
-            z = torch.randn(imgs.shape[0], self.hparams.latent_dim)
-            z = z.type_as(imgs)
+
+            if batch_idx % self.hparams.n_critic != 0:
+                return
 
             # generate images
             generated_imgs = self(z)
@@ -68,8 +76,8 @@ class GAN(LightningModule):
 
             # adversarial loss is binary cross-entropy
             disc_pred_on_fake = self.discriminator(generated_imgs)
-            g_loss = self.adversarial_loss(disc_pred_on_fake, valid)
-            disc_pred_on_fake = disc_pred_on_fake.detach().mean().item()
+            g_loss = -disc_pred_on_fake.mean()
+            disc_pred_on_fake = g_loss.detach().item()
             tqdm_dict = {"g_loss": g_loss.item(), "disc_pred_on_fake": disc_pred_on_fake}
             self.log("g_loss", g_loss.item())
             self.log("disc_pred_on_fake", disc_pred_on_fake)
@@ -79,28 +87,31 @@ class GAN(LightningModule):
 
         # train discriminator
         if optimizer_idx == 1:
-            if batch_idx % 2 == 1:
-                return
+            self.disc_changed = True
             # Measure discriminator's ability to classify real from generated samples
 
             # how well can it label as real?
             real_label = torch.ones(imgs.size(0), 1)
             real_label = real_label.type_as(imgs)
 
-            disc_pred_on_real = self.discriminator(imgs)
-            real_loss = self.adversarial_loss(disc_pred_on_real, real_label)
+            disc_pred_on_real = self.discriminator(imgs).mean()
 
-            disc_pred_on_real = disc_pred_on_real.detach().mean().item()
+            if self.generated_imgs is not None:
+                generated_imgs = self.generated_imgs
+            else:
+                with torch.no_grad():
+                    generated_imgs = self(z)
+            self.generated_imgs = None
 
             # how well can it label as fake?
-            fake_label = torch.zeros(imgs.size(0), 1)
-            fake_label = fake_label.type_as(imgs)
             # Reuse images last generated
-            fake_loss = self.adversarial_loss(self.discriminator(self.generated_imgs), fake_label)
+            disc_pred_on_fake = self.discriminator(generated_imgs).mean()
 
             # discriminator loss is the average of these
-            d_loss = (real_loss + fake_loss) * 0
-            tqdm_dict = {"d_loss": d_loss.item(), "disc_pred_on_real": disc_pred_on_real}
+            d_loss = (-disc_pred_on_real + disc_pred_on_fake)
+            tqdm_dict = {"d_loss": d_loss.item(),
+                         "disc_pred_on_real": disc_pred_on_real.detach().item(),
+                         "disc_pred_on_fake2": disc_pred_on_fake.detach().item()}
             self.log_dict(tqdm_dict)
             output = OrderedDict({"loss": d_loss, "progress_bar": tqdm_dict, "log": tqdm_dict})
             return output
@@ -113,6 +124,13 @@ class GAN(LightningModule):
         opt_g = torch.optim.Adam(self.generator.parameters(), lr=lr, betas=(b1, b2))
         opt_d = torch.optim.Adam(self.discriminator.parameters(), lr=lr, betas=(b1, b2))
         return [opt_g, opt_d], []
+
+    def on_before_zero_grad(self, optimizer) -> None:
+        if not self.disc_changed:
+            return
+        self.disc_changed = False
+        for p in self.discriminator.parameters():
+            p.data.clamp_(-self.hparams.clip_value, self.hparams.clip_value)
 
     def on_epoch_end(self) -> None:
         if self.trainer.is_global_zero:

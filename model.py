@@ -10,7 +10,7 @@ class ResidualBlock(nn.Module):
         super(ResidualBlock, self).__init__()
         self.relu_alpha = relu_alpha
         self.left = nn.Sequential(
-            block(inchannel, outchannel, kernel_size=3,
+            nn.Conv2d(inchannel, outchannel, kernel_size=3,
                   stride=stride, padding=1, bias=False, groups=groups, **kwargs),
             nn.BatchNorm2d(outchannel),
             nn.LeakyReLU(relu_alpha, inplace=True),
@@ -43,28 +43,28 @@ class Generator(nn.Module):
     def __init__(self, latent_dim):
         super(Generator, self).__init__()
         self.latent_dim = latent_dim
-        _leaky_alpha = 0.01
+        _leaky_alpha = 0.2
         self.initial_layers = nn.Sequential(
             nn.ConvTranspose2d(latent_dim, 512, kernel_size=4, bias=False),
             nn.BatchNorm2d(512),
             nn.LeakyReLU(_leaky_alpha),
         )
         self.layers = nn.Sequential(
-            ResidualBlock(512, 512, relu_alpha=_leaky_alpha),
-            ResidualBlock(512, 512, relu_alpha=_leaky_alpha),
+            # ResidualBlock(512, 512, relu_alpha=_leaky_alpha),
+            # ResidualBlock(512, 512, relu_alpha=_leaky_alpha),
             nn.ConvTranspose2d(512, 256, kernel_size=4, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(256),
             nn.LeakyReLU(_leaky_alpha),
-            ResidualBlock(256, 256, relu_alpha=_leaky_alpha),
-            ResidualBlock(256, 256, relu_alpha=_leaky_alpha),
+            # ResidualBlock(256, 256, relu_alpha=_leaky_alpha),
+            # ResidualBlock(256, 256, relu_alpha=_leaky_alpha),
             nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(128),
             nn.LeakyReLU(_leaky_alpha),
-            ResidualBlock(128, 128, relu_alpha=_leaky_alpha),
-            ResidualBlock(128, 128, relu_alpha=_leaky_alpha),
+            # ResidualBlock(128, 128, relu_alpha=_leaky_alpha),
+            # ResidualBlock(128, 128, relu_alpha=_leaky_alpha),
             nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1, bias=False),
-            ResidualBlock(64, 64, relu_alpha=_leaky_alpha),
-            ResidualBlock(64, 64, relu_alpha=_leaky_alpha),
+            # ResidualBlock(64, 64, relu_alpha=_leaky_alpha),
+            # ResidualBlock(64, 64, relu_alpha=_leaky_alpha),
             ResidualBlock(64, 3, relu_alpha=_leaky_alpha),
             nn.Tanh())
 
